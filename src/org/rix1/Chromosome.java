@@ -2,6 +2,7 @@ package org.rix1;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 class Chromosome {
@@ -37,6 +38,22 @@ class Chromosome {
         }
 
         calculateCost(cities);
+    }
+
+    public static int[] copyCities(Chromosome old){
+        int[] neu = new int[old.cityList.length];
+        for (int i = 0; i < old.cityList.length; i++) {
+            neu[i] = old.getCity(i);
+        }
+        return neu;
+    }
+
+    @Override
+    public String toString() {
+        return "Chromosome{" +
+                "cityList=" + Arrays.toString(cityList) +
+                ", cost=" + cost +
+                '}';
     }
 
     /**

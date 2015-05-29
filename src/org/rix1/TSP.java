@@ -3,9 +3,12 @@ package org.rix1;
 import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.text.*;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Random;
 
 import javax.swing.*;
 
@@ -21,6 +24,7 @@ public class TSP {
      */
     protected static int populationSize;
 
+    private static final double pSelectTresHold = 0.5;
     /**
      * The part of the population eligable for mateing.
      */
@@ -99,15 +103,96 @@ public class TSP {
     }
 
     public static void evolve() {
-        //Write evolution code here.
 
         /*TOOD:
-        * 1. Select parents from chromosones list
+        * 1. Select parents from chromosones list with UNIFORM RANDOM
         * 2. Recombine pairs of parents
-        * 3. Mutate*/
+        * 3. Mutate
+        *
+        * */
 
 //        matingPopulationSize - parents eligible for mating
 //        selectedParents - parents selected for mating
+
+//        Chromosome.sortChromosomes(chromosomes, populationSize);
+            parentSelection();
+
+//        for (int i = 0; i < 50; i++) {
+//            chromosomes[(chromosomes.length-1)-i] = transposition(chromosomes[i]);
+//        }
+    }
+
+    /**
+     * Select parents with uniform random distribution
+     * @return the selected parents
+     * rix1
+     * */
+
+    private static int[] parentSelection(){
+        // Select parents with uniform random distribution
+
+        ArrayList<Chromosome> candidates = new ArrayList<Chromosome>();
+
+        // TODO: Could improve so that high fitness has higher probablility
+        for (Chromosome chromosome : chromosomes) {
+            if (Math.random() > pSelectTresHold) {
+                candidates.add(chromosome);
+            }
+        }
+
+        System.out.println("Parents selected: " + candidates.size());
+
+        return null;
+    }
+
+    private static Chromosome transposition(Chromosome chrom){
+        Chromosome child = new Chromosome(cities);
+
+        child.setCities(Chromosome.copyCities(chrom));
+
+        Random r = new Random();
+
+        int random = r.nextInt(cityCount);
+        int pos = r.nextInt(cityCount);
+
+        child.setCity(random, chrom.getCity(pos));
+        child.setCity(pos, chrom.getCity(random));
+
+        return child;
+    }
+
+    // 3-point exchange
+    private static void shift(Chromosome chrom){
+        Random r = new Random();
+
+        Chromosome child = new Chromosome(cities);
+        child.setCities(Chromosome.copyCities(chrom));
+
+        int to = r.nextInt(cityCount);
+        int from = r.nextInt(to);
+        int pos = r.nextInt(cityCount);
+
+        int lenght = to-from;
+
+        for (int i = 0; i <lenght; i++) {
+        }
+    }
+
+
+    // Todo: Add probability stuff
+    private static Chromosome reproduciton(Chromosome parent1, Chromosome parent2) {
+        Chromosome child = new Chromosome(cities);
+
+        // n-point crossover where n = cityCount
+        for (int i = 0; i < cityCount; i++) {
+            child.setCity(i, (i%2 == 0) ? parent1.getCity(i) : parent2.getCity(i));
+        }
+        return child;
+    }
+
+    private static int[] selectParents(){
+        Chromosome.sortChromosomes(chromosomes, populationSize);
+        return null;
     }
 
     /**
