@@ -40,9 +40,18 @@ class Chromosome {
         calculateCost(cities);
     }
 
+    public boolean containsCity(int city){
+        for (int i = 0; i < cityList.length; i++) {
+            if(cityList[i] == city){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static int[] copyCities(Chromosome old){
         int[] neu = new int[old.cityList.length];
-        for (int i = 0; i < old.cityList.length; i++) {
+        for (int i = 0; i < neu.length; i++) {
             neu[i] = old.getCity(i);
         }
         return neu;
@@ -83,6 +92,10 @@ class Chromosome {
      */
     int getCity(int i) {
         return cityList[i];
+    }
+
+    public void clearCities(){
+        cityList = new int[cityList.length];
     }
 
     /**

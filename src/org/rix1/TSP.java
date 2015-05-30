@@ -1,14 +1,12 @@
 package org.rix1;
 
+import com.sun.deploy.net.CanceledDownloadException;
+
 import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.text.*;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Random;
+import java.util.*;
 
 import javax.swing.*;
 
@@ -25,6 +23,12 @@ public class TSP {
     protected static int populationSize;
 
     private static final double pSelectTresHold = 0.5;
+    private static final int TOURNAMENT_SIZE = 5;
+    private static final int NUM_OF_CHILDREN = 50;
+    private static final int CROSSOVER = 3;
+
+    private static Random r = new Random();
+
     /**
      * The part of the population eligable for mateing.
      */
@@ -44,6 +48,8 @@ public class TSP {
      * The list of cities.
      */
     protected static City[] cities;
+    private static ArrayList<Chromosome> candidates = new ArrayList<Chromosome>();
+
 
     /**
      * The list of chromosomes.
@@ -102,7 +108,33 @@ public class TSP {
         System.out.println(content);
     }
 
+    private static void resetCandidates(){
+        candidates.clear();
+        Collections.addAll(candidates, chromosomes);
+    }
+
     public static void evolve() {
+        resetCandidates();
+
+        ArrayList<Chromosome> children = new ArrayList<Chromosome>();
+
+        // This is the 
+        for (int i = 0; i < NUM_OF_CHILDREN; i++) {
+//            System.out.println("Generated " +i + " children");
+            Chromosome child = reproduce(psTournament(), psTournament());
+            child.calculateCost(cities);
+            System.out.println("Cost before: " + child.getCost());
+            child = shift(child);
+            child.calculateCost(cities);
+            System.out.println("Cost after: " + child.getCost());
+            children.add(child);
+        }
+
+        Chromosome.sortChromosomes(chromosomes, populationSize);
+
+        for (int i = 0; i < populationSize/2; i++) {
+            chromosomes[(populationSize/2)+i] = children.get(i);
+        }
 
         /*TOOD:
         * 1. Select parents from chromosones list with UNIFORM RANDOM
@@ -110,16 +142,6 @@ public class TSP {
         * 3. Mutate
         *
         * */
-
-//        matingPopulationSize - parents eligible for mating
-//        selectedParents - parents selected for mating
-
-//        Chromosome.sortChromosomes(chromosomes, populationSize);
-            parentSelection();
-
-//        for (int i = 0; i < 50; i++) {
-//            chromosomes[(chromosomes.length-1)-i] = transposition(chromosomes[i]);
-//        }
     }
 
     /**
@@ -128,7 +150,7 @@ public class TSP {
      * rix1
      * */
 
-    private static int[] parentSelection(){
+    private static int[] psUniform(){
         // Select parents with uniform random distribution
 
         ArrayList<Chromosome> candidates = new ArrayList<Chromosome>();
@@ -145,47 +167,171 @@ public class TSP {
         return null;
     }
 
-    private static Chromosome transposition(Chromosome chrom){
-        Chromosome child = new Chromosome(cities);
+    /**
+     * Select fittest parent with a tournament selection strategy
+     * @return The winner of the tournament
+     * rix1
+     * */
 
-        child.setCities(Chromosome.copyCities(chrom));
+    private static Chromosome psTournament(){
 
         Random r = new Random();
+        ArrayList<Chromosome> tournament = new ArrayList<Chromosome>();
+        Chromosome fittest;
 
-        int random = r.nextInt(cityCount);
-        int pos = r.nextInt(cityCount);
+        if(candidates.size() < TOURNAMENT_SIZE){
+            fittest = getFittest(candidates); // Select fittest among remaining...
+        }else{
+            for (int i = 0; i < TOURNAMENT_SIZE; i++) {
+                tournament.add(candidates.get(r.nextInt(candidates.size())));
+            }
+            fittest = getFittest(tournament);
+        }
 
-        child.setCity(random, chrom.getCity(pos));
-        child.setCity(pos, chrom.getCity(random));
+        candidates.remove(fittest);
 
-        return child;
+        return fittest;
+    }
+
+    private static Chromosome getFittest(ArrayList<Chromosome> tournament){
+        Chromosome best = tournament.get(0);
+
+        for (Chromosome c : tournament){
+            if(c.getCost() < best.getCost()){ // Lower cost is obviously better
+                best = c;
+            }
+        }
+        return best;
+    }
+
+
+    // Two-point exchange
+    private static Chromosome transposition(Chromosome chrom){
+
+        int posA = r.nextInt(cityCount);
+        int posB = r.nextInt(cityCount);
+        int cityA = chrom.getCity(posA);
+        int cityB = chrom.getCity(posB);
+
+        chrom.setCity(posA, cityB);
+        chrom.setCity(posB, cityA);
+
+        return chrom;
     }
 
     // 3-point exchange
-    private static void shift(Chromosome chrom){
-        Random r = new Random();
+    private static Chromosome shift(Chromosome chrom) {
 
-        Chromosome child = new Chromosome(cities);
-        child.setCities(Chromosome.copyCities(chrom));
+        int[] rand = createRandom(2, cityCount);
+        int[] shifted = new int[rand[1]-rand[0]];
 
-        int to = r.nextInt(cityCount);
-        int from = r.nextInt(to);
-        int pos = r.nextInt(cityCount);
-
-        int lenght = to-from;
-
-        for (int i = 0; i <lenght; i++) {
+        for (int i = 0; i < shifted.length; i++) {
+            shifted[i] = chrom.getCity(rand[0]+i);
         }
+
+        int pos = r.nextInt(cityCount);
+        int localPos = 0;
+
+        for (int i = 0; i < shifted.length; i++) {
+            localPos = pos + i;
+
+            if(localPos >= cityCount){
+                localPos -= cityCount;
+            }
+            chrom.setCity(localPos, shifted[i]);
+        }
+        return chrom;
+    }
+
+
+
+    //
+
+    /**
+     * I need a way of creating x unique random numbers.
+     * This one should do the trick.
+     * @param noOfNo number of random numbers to be generated
+     * @param range range of the random numbers need to be in
+     * @return a sorted list of unique random numbers from 0 to range
+     */
+
+    private static int[] createRandom(int noOfNo, int range){
+        int[] numbers = new int[noOfNo];
+        ArrayList<Integer> usedNo = new ArrayList<Integer>();
+        int no = 0;
+
+        for (int i = 0; i < numbers.length; i++) {
+            no = r.nextInt(range);
+            if(!usedNo.contains(no)){
+                numbers[i] = no;
+            }else {
+                while (usedNo.contains(no)) {
+                    no = r.nextInt(range);
+                }
+                numbers[i] = no;
+            }
+        }
+        Arrays.sort(numbers);
+        return numbers;
+    }
+
+    private static Chromosome setCity(Chromosome parent, Chromosome child, int index) {
+        int localIndex = index;
+        int city = parent.getCity(localIndex);
+        boolean flag = false;
+        if (city == 0) {
+            child.setCity(index, city);
+        } else {
+            if (child.containsCity(city)) {
+                while (child.containsCity(city)) {
+//                    System.out.println("Trying to find a spot for " + city);
+                    localIndex++;
+                    if(localIndex >= cityCount){
+                        flag = true;
+
+//                        System.out.println("IM STUCK");
+                        localIndex -= cityCount;
+                        if(flag){
+                            System.out.println("IM SUPER STUCK at " + index + "\n child contains: " + Arrays.toString(child.cityList));
+                            flag = false;
+                        }
+                    }else{
+                        flag = false;
+                    }
+                    city = parent.getCity(localIndex);
+                }
+                child.setCity(index, parent.getCity(localIndex));
+            } else {
+                child.setCity(index, city);
+            }
+        }
+        return child;
     }
 
 
     // Todo: Add probability stuff
-    private static Chromosome reproduciton(Chromosome parent1, Chromosome parent2) {
+    private static Chromosome reproduce(Chromosome parent1, Chromosome parent2) {
         Chromosome child = new Chromosome(cities);
+        child.clearCities();
+        int[] crossPoints = createRandom(CROSSOVER, cityCount);
 
-        // n-point crossover where n = cityCount
+        int crossIndex = 0;
+
+        // n-point crossover
         for (int i = 0; i < cityCount; i++) {
-            child.setCity(i, (i%2 == 0) ? parent1.getCity(i) : parent2.getCity(i));
+            System.out.println("CITYCOUNT: "+ i);
+            if(i <= crossPoints[crossIndex] || (i > crossPoints[crossPoints.length-1] && i < cityCount)){
+                if(crossIndex%2 == 0){
+                    // Select from parent 1
+                    child = setCity(parent1, child, i);
+                    // Check if number already is contained in list
+                }else{
+                    child = setCity(parent2, child, i);
+                    // Select from parent 2
+                }
+            }else{
+                crossIndex++;
+            }
         }
         return child;
     }
