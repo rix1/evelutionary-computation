@@ -94,16 +94,18 @@ class Chromosome {
         return cityList[i];
     }
 
-    public void clearCities(){
-        cityList = new int[cityList.length];
-    }
-
     /**
      * Set the order of cities that this chromosome would visit.
      *
      * @param list A list of cities.
      */
     void setCities(int[] list) {
+        for (int i = 0; i < cityList.length; i++) {
+            cityList[i] = list[i];
+        }
+    }
+
+    void setCities(Integer[] list) {
         for (int i = 0; i < cityList.length; i++) {
             cityList[i] = list[i];
         }
@@ -127,6 +129,9 @@ class Chromosome {
      */
     public static void sortChromosomes(Chromosome chromosomes[], int num) {
         Chromosome ctemp;
+
+
+
         boolean swapped = true;
         while (swapped) {
             swapped = false;

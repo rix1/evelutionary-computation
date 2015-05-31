@@ -1,12 +1,11 @@
 package org.rix1;
 
-import com.sun.deploy.net.CanceledDownloadException;
-
 import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.*;
 import java.util.*;
+import java.util.List;
 
 import javax.swing.*;
 
@@ -57,8 +56,8 @@ public class TSP {
     protected static Chromosome[] chromosomes;
 
     /**
-    * Frame to display cities and paths
-    */
+     * Frame to display cities and paths
+     */
     private static JFrame frame;
 
     /**
@@ -122,11 +121,14 @@ public class TSP {
         for (int i = 0; i < NUM_OF_CHILDREN; i++) {
 //            System.out.println("Generated " +i + " children");
             Chromosome child = reproduce(psTournament(), psTournament());
+//            child.calculateCost(cities);
+//            System.out.println("Cost b: " + child.getCost());
+            if(r.nextFloat() < 0.5){
+                child = shift(child);
+            }
+//            child = transposition(child);
             child.calculateCost(cities);
-            System.out.println("Cost before: " + child.getCost());
-            child = shift(child);
-            child.calculateCost(cities);
-            System.out.println("Cost after: " + child.getCost());
+//            System.out.println("Cost a: " + child.getCost());
             children.add(child);
         }
 
@@ -189,7 +191,6 @@ public class TSP {
         }
 
         candidates.remove(fittest);
-
         return fittest;
     }
 
@@ -219,32 +220,70 @@ public class TSP {
         return chrom;
     }
 
+    private static ArrayList<Integer> split(int[] cities, int[] splits){
+        int size = cities.length;
+
+
+
+        return null;
+    }
+
+    private static ArrayList<Integer> getArrayList(int[] cities){
+        ArrayList<Integer> ret = new ArrayList<Integer>();
+        for (int city : cities) {
+            ret.add(city);
+        }
+        return ret;
+    }
+
+    private static int[] getArray(ArrayList<Integer> list){
+        int[] ret = new int[list.size()];
+
+        for (int i = 0; i < ret.length; i++) {
+            ret[i] = list.get(i);
+        }
+        return ret;
+    }
+
+    private static Chromosome shift(Chromosome c){
+
+        int[] rand = createRandom(2, cityCount);
+        ArrayList<Integer> cities = getArrayList(c.cityList);
+
+        ArrayList<Integer> subset = new ArrayList<Integer>(cities.subList(rand[0], rand[1]));
+        cities.subList(rand[0], rand[1]).clear();
+
+        int pivot = r.nextInt(cities.size());
+        cities.addAll(pivot, subset);
+
+        c.setCities(getArray(cities));
+
+        return c;
+    }
+
+
     // 3-point exchange
-    private static Chromosome shift(Chromosome chrom) {
+    private static Chromosome shift2(Chromosome chrom) {
 
         int[] rand = createRandom(2, cityCount);
         int[] shifted = new int[rand[1]-rand[0]];
 
+        int offset = rand[0];
         for (int i = 0; i < shifted.length; i++) {
-            shifted[i] = chrom.getCity(rand[0]+i);
+            shifted[i] = chrom.getCity(offset);
+            offset++;
         }
 
         int pos = r.nextInt(cityCount);
+
         int localPos = 0;
 
-        for (int i = 0; i < shifted.length; i++) {
-            localPos = pos + i;
 
-            if(localPos >= cityCount){
-                localPos -= cityCount;
-            }
+        for (int i = 0; i < shifted.length; i++) {
             chrom.setCity(localPos, shifted[i]);
         }
         return chrom;
     }
-
-
-
     //
 
     /**
@@ -275,51 +314,200 @@ public class TSP {
         return numbers;
     }
 
+
+    // REPRODUCTION
+    public static Chromosome reproduction321(Chromosome parent1, Chromosome parent2) {
+        Chromosome child = new Chromosome(cities);
+
+        int[] rand = createRandom(2, cityCount);
+
+
+
+        return child;
+    }
+
     private static Chromosome setCity(Chromosome parent, Chromosome child, int index) {
         int localIndex = index;
         int city = parent.getCity(localIndex);
-        boolean flag = false;
+        boolean found = false;
+
+//        System.out.println("TRYING TO SET " + city + " at index " + index + " \nparent: " + Arrays.toString(parent.cityList) + " \nchild " + Arrays.toString(child.cityList));
+
         if (city == 0) {
             child.setCity(index, city);
+            return child;
         } else {
             if (child.containsCity(city)) {
-                while (child.containsCity(city)) {
-//                    System.out.println("Trying to find a spot for " + city);
-                    localIndex++;
-                    if(localIndex >= cityCount){
-                        flag = true;
+//                System.out.println("WOPS, child already contains city " + city);
 
-//                        System.out.println("IM STUCK");
-                        localIndex -= cityCount;
-                        if(flag){
-                            System.out.println("IM SUPER STUCK at " + index + "\n child contains: " + Arrays.toString(child.cityList));
-                            flag = false;
-                        }
+                while(!found){
+                    if(!Arrays.asList(child.cityList).contains(parent.getCity(localIndex))) {
+                        child.setCity(index, parent.getCity(localIndex));
+//                        System.out.println("FOUND");
+                        found = true;
+                        return child;
                     }else{
-                        flag = false;
+                        localIndex++;
+                        if(localIndex >= cityCount){
+                            localIndex -= cityCount;
+                        }
                     }
-                    city = parent.getCity(localIndex);
-                }
-                child.setCity(index, parent.getCity(localIndex));
+                }return child;
             } else {
                 child.setCity(index, city);
+                return child;
             }
+        }
+    }
+
+
+    private static int findNextCity(Integer[] firstHalf, int[] parent2, int pivot){
+        int local = pivot;
+        for (int i = 0; i < parent2.length; i++) {
+            if(local >= parent2.length){
+                local = 0;
+            }
+            if(contains(firstHalf, parent2[local])){
+                local ++;
+                continue;
+            }else{
+                return parent2[local];
+            }
+        }
+        return 0;
+    }
+
+    private static boolean contains(Integer[] list, int number){
+        for (int i = 0; i < list.length; i++) {
+            if(list[i] == number){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Integer[] getInteger(int[] list){
+        Integer[] ret = new Integer[list.length];
+
+        for (int i = 0; i < list.length; i++) {
+            ret[i] = list[i];
+        }
+        return ret;
+    }
+
+    private static Chromosome reproduce(Chromosome parent1, Chromosome parent2) {
+
+        Chromosome child = new Chromosome(cities);
+
+        ArrayList<Integer> all = new ArrayList<>();
+
+        int pivot = r.nextInt(cityCount);
+
+        Integer[] p1_temp = new Integer[pivot];
+        Integer[] p2_temp = new Integer[cityCount-pivot];
+
+        for (int i = 0; i < p1_temp.length; i++) {
+            p1_temp[i] = parent1.cityList[i];
+        }
+
+        for (int i = 0; i < p2_temp.length; i++) {
+            p2_temp[i] = parent2.cityList[i+pivot];
+        }
+
+        Integer[] p1 = getInteger(parent1.cityList);
+
+        Collections.addAll(all, p1_temp); // Add the first half from parent 1
+        Collections.addAll(all, p2_temp); // Add the second half from parent 2
+        Collections.addAll(all, p1); // Just in case...
+
+        List<Integer> dup =
+                new ArrayList<>(new LinkedHashSet<>(all)); // Remove all duplicates
+
+
+        Integer[] last = dup.toArray(new Integer[dup.size()]);
+        child.setCities(last);
+
+        return  child;
+    }
+
+
+
+
+    private static Chromosome reproduce13(Chromosome parent1, Chromosome parent2) {
+        int[] cities = parent1.cityList;
+
+        int pivot = r.nextInt(cityCount);
+        int startPoint = pivot;
+        int candidateCity;
+
+        for (int i = pivot; i < cityCount; i++) {
+            candidateCity = parent2.getCity(i);
+
+//            if(contains(candidateCity, cities, pivot)){
+//                cities[i] = findNextCity();
+//            }else{
+//                cities[i] = candidateCity;
+//            }
+        }
+
+        return null;
+    }
+
+    private static int[] getHalf(int[] cityList, int pivot){
+        int[] neu = new int[pivot];
+
+        // Copies the first half of the list.
+        for (int i = 0; i < neu.length; i++) {
+            neu[i] = cityList[i];
+        }
+        return neu;
+    }
+
+
+    private static Chromosome reproduce123(Chromosome parent1, Chromosome parent2) {
+        Chromosome child = new Chromosome(cities);
+
+        int pivot = r.nextInt(cityCount);
+        int p2city = 0;
+
+        for (int i = 0; i < cityCount; i++) {
+            if(i < pivot){
+                child.setCity(i, parent1.getCity(i));
+            }else{
+                p2city = parent2.getCity(i);
+
+                int[] temp = getHalf(child.cityList, pivot);
+
+                if(Arrays.asList(temp).contains(p2city)){
+                    int rounds = i;
+                    while (Arrays.asList(temp).contains(p2city)){
+                        p2city = parent2.getCity(rounds);
+                        if(rounds >= cityCount){
+                            rounds -= cityCount;
+                        }
+                        rounds++;
+                    }
+                    child.setCity(i, parent2.getCity(rounds));
+                }else{
+                    child.setCity(i, p2city);
+                }
+            }
+
         }
         return child;
     }
 
-
     // Todo: Add probability stuff
-    private static Chromosome reproduce(Chromosome parent1, Chromosome parent2) {
+    private static Chromosome reproduce2(Chromosome parent1, Chromosome parent2) {
         Chromosome child = new Chromosome(cities);
-        child.clearCities();
         int[] crossPoints = createRandom(CROSSOVER, cityCount);
 
         int crossIndex = 0;
 
+
         // n-point crossover
         for (int i = 0; i < cityCount; i++) {
-            System.out.println("CITYCOUNT: "+ i);
+//            System.out.println("CITYCOUNT: "+ i + " last crossPoint and Index " + crossPoints[crossPoints.length-1] + " : " + crossIndex);
             if(i <= crossPoints[crossIndex] || (i > crossPoints[crossPoints.length-1] && i < cityCount)){
                 if(crossIndex%2 == 0){
                     // Select from parent 1
@@ -330,6 +518,7 @@ public class TSP {
                     // Select from parent 2
                 }
             }else{
+//                System.out.println("\nCROSSING!\n");
                 crossIndex++;
             }
         }
@@ -366,10 +555,10 @@ public class TSP {
                 if (i != 0) {
                     int last = chromosomes[0].getCity(i - 1);
                     g.drawLine(
-                        cities[icity].getx(),
-                        cities[icity].gety(),
-                        cities[last].getx(),
-                        cities[last].gety());
+                            cities[icity].getx(),
+                            cities[icity].gety(),
+                            cities[last].getx(),
+                            cities[last].gety());
                 }
             }
         }
@@ -393,7 +582,7 @@ public class TSP {
         } else {
 
             if (args.length > 3) {
-                display = true; 
+                display = true;
             }
 
             try {
@@ -410,13 +599,13 @@ public class TSP {
                     frame.setSize(width + 300, height);
                     frame.setResizable(false);
                     frame.setLayout(new BorderLayout());
-                    
+
                     statsText = new TextArea(35, 35);
                     statsText.setEditable(false);
 
                     statsArea.add(statsText);
                     frame.add(statsArea, BorderLayout.EAST);
-                    
+
                     frame.setVisible(true);
                 }
 
@@ -432,15 +621,15 @@ public class TSP {
                 cities = new City[cityCount];
                 for (int i = 0; i < cityCount; i++) {
                     cities[i] = new City(
-                        (int) (Math.random() * (width - 10) + 5),
-                        (int) (Math.random() * (height - 50) + 30));
+                            (int) (Math.random() * (width - 10) + 5),
+                            (int) (Math.random() * (height - 50) + 30));
                 }
 
                 writeLog("Run Stats for experiment at: " + currentTime);
                 for (int y = 1; y <= runs; y++) {
                     print(display,  "Run " + y + "\n");
 
-                // create the initial population of chromosomes
+                    // create the initial population of chromosomes
                     chromosomes = new Chromosome[populationSize];
                     for (int x = 0; x < populationSize; x++) {
                         chromosomes[x] = new Chromosome(cities);
@@ -468,6 +657,11 @@ public class TSP {
                             updateGUI();
                         }
                     }
+
+                    Chromosome.sortChromosomes(chromosomes, populationSize);
+
+                    System.out.println(Arrays.toString(chromosomes[0].cityList));
+
 
                     writeLog(thisCost + "");
 
