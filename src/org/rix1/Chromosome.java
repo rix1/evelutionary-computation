@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
-class Chromosome {
+class Chromosome implements Comparable<Chromosome>{
 
     /**
      * The list of cities, which are the genes of this chromosome.
@@ -111,6 +111,10 @@ class Chromosome {
         }
     }
 
+    void clearCities(){
+        cityList = new int[cityList.length];
+    }
+
     /**
      * Set the index'th city in the city list.
      *
@@ -144,5 +148,10 @@ class Chromosome {
                 }
             }
         }
+    }
+
+    @Override
+    public int compareTo(Chromosome other) {
+        return (int)(this.getCost() - other.getCost());
     }
 }
