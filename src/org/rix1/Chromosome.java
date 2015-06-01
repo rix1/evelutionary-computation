@@ -112,6 +112,7 @@ class Chromosome implements Comparable<Chromosome>{
     }
 
     void clearCities(){
+
         cityList = new int[cityList.length];
     }
 

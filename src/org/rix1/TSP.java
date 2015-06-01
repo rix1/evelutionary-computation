@@ -55,11 +55,21 @@ public class TSP {
     private static long avgEvolveTime;
     private static long avgTMutationTime;
 
-    private static int mutationCounter = 0;
+    private static int mutationTimerCounter = 0;
     private static int recombinationCounter = 0;
     private static int tournamentCounter = 0;
     private static int evolveCounter = 0;
-    private static int tMutationCounter = 0;
+    private static int tMutationCounter = 1;
+
+    private static int q = 0;
+    private static int rechenberg_rule = 5;
+
+    private static int mutationCounter = 0;
+    private static int succMutations = 0;
+    private static double sigma = 0.2;
+    private static final double SIGMA_CONST = 0.9;
+
+
 
 
     /**
@@ -72,8 +82,8 @@ public class TSP {
     private static Panel statsArea;
     private static TextArea statsText;
 
-    private static final int TOURNAMENT_SIZE = 5;
-    private static final int NUM_OF_CHILDREN = 2000;
+    private static final int TOURNAMENT_SIZE =  5;
+    private static final int NUM_OF_CHILDREN = 3000;
     private static Random r = new Random();
     private static ArrayList<Chromosome> candidates = new ArrayList<Chromosome>();
 
@@ -83,9 +93,37 @@ public class TSP {
         Collections.addAll(candidates, chromosomes);
     }
 
+    private static void calculateSigma(){
+
+        double succProsentage = (double)succMutations/mutationCounter;
+
+        if(succProsentage > 0.2){
+            System.out.println("Increase probability from: "+ sigma);
+            sigma = sigma/SIGMA_CONST;
+            System.out.println("TO: "+ sigma);
+        }else if(succProsentage < 0.2){
+            System.out.println("Decrease probability from: "+ sigma);
+            sigma = sigma*SIGMA_CONST;
+            System.out.println("TO: "+ sigma);
+        }else{
+            // Do nothing.
+        }
+
+        succMutations = 0;
+        mutationCounter = 0;
+
+    }
+
     public static void evolve() {
 
+        q++;
+
         resetCandidates();
+
+        if(q > rechenberg_rule){
+            calculateSigma();
+            q = 0;
+        }
 
         ArrayList<Chromosome> children = new ArrayList<Chromosome>();
 
@@ -93,14 +131,14 @@ public class TSP {
         for (int i = 0; i < NUM_OF_CHILDREN; i++) {
             long start = System.nanoTime();
             evolveCounter++;
-            Chromosome child = reproduce(psTournament(), psTournament());
+            Chromosome child = reproduceImproved(psTournament(), psTournament());
 
-            if(r.nextFloat() < 0.5){
-                child = shift(child);
-            }else if(r.nextFloat() < 0.1){
-                child = transposition(child);
-            }
             child.calculateCost(cities);
+
+            if(r.nextFloat() <= sigma){
+                child = shift(child);
+            }
+
             children.add(child);
             avgEvolveTime += System.nanoTime()-start;
         }
@@ -180,38 +218,35 @@ public class TSP {
 
     private static Chromosome shift(Chromosome c){
 
+        long start = System.nanoTime();
+        mutationTimerCounter++;
+        mutationCounter++;
+        double oldCost = c.getCost();
 
-        // ----- 15884 ----
+        transposition(c);
+
+
+// 15884
         int[] rand = createRandom(2, cityCount);
+// 13066
+        ArrayList<Integer> integerCities = arrayToArrayList(c.cityList);
+// 1759
+        ArrayList<Integer> subset = new ArrayList<Integer>(integerCities.subList(rand[0], rand[1]));
+        integerCities.subList(rand[0], rand[1]).clear();
+// 1759
+        int pivot = r.nextInt(integerCities.size());
+        integerCities.addAll(pivot, subset);
+// 13066
+        c.setCities(ArrayListToInteger(integerCities));
+// 15884
 
+        c.calculateCost(cities);
 
-        // ----- 13066 ----
+        if(c.getCost() < oldCost){
+            succMutations++;
+        }
 
-        ArrayList<Integer> cities = arrayToArrayList(c.cityList);
-
-
-
-        // ----- 1759 ----
-
-
-        ArrayList<Integer> subset = new ArrayList<Integer>(cities.subList(rand[0], rand[1]));
-        cities.subList(rand[0], rand[1]).clear();
-
-        // ----- 1759 ----
-
-
-        int pivot = r.nextInt(cities.size());
-        cities.addAll(pivot, subset);
-
-
-
-        // ----- 13066 ----
-
-
-        c.setCities(ArrayListToInteger(cities));
-
-        // ----- 15884 ----
-
+        avgMutationTime += System.nanoTime() - start;
         return c;
     }
 
@@ -228,16 +263,13 @@ public class TSP {
     private static ArrayList<Integer> arrayToArrayList(int[] cities){
         ArrayList<Integer> ret = new ArrayList<Integer>();
 
-        long start = System.nanoTime();
-        mutationCounter++;
 
-        // --- fore loop ~11000
+        // TODO: --- fore loop ~11000 ns - IMPROVE!
 
         for (int i = 0; i < cities.length; i++) {
             ret.add(cities[i]);
         }
 
-        avgMutationTime += System.nanoTime() - start;
         return ret;
     }
 
@@ -281,6 +313,62 @@ public class TSP {
         return numbers;
     }
 
+
+    private static Chromosome reproduceImproved(Chromosome parent1, Chromosome parent2) {
+        long start = System.nanoTime();
+        recombinationCounter++;
+
+        Chromosome child = new Chromosome(cities);
+        ArrayList<Integer> all = new ArrayList<>();
+
+        int[] allInt = new int[cityCount*2];
+
+        int[] rand = createRandom(3, cityCount);
+
+        Integer[] theShiz = new Integer[cityCount];
+
+        int pivotTracker = 0;
+
+        for (int i = 0; i < cityCount; i++) {
+            allInt[i+cityCount] = parent1.getCity(i);
+
+            if(i <= rand[pivotTracker] || pivotTracker == rand.length-1){
+                if(pivotTracker % 2 == 0){
+                    // Select from parent 1
+                    theShiz[i] = parent1.cityList[i];
+                }else{
+                    theShiz[i] = parent2.cityList[i];
+                    // Select from parent 2
+                }
+            }else{
+                pivotTracker++;
+                if(pivotTracker % 2 == 0){
+                    // Select from parent 1
+                    theShiz[i] = parent1.cityList[i];
+                }else{
+                    theShiz[i] = parent2.cityList[i];
+                    // Select from parent 2
+                }
+            }
+        }
+
+        Integer[] p1 = arrayToInteger(parent1.cityList);
+
+        Collections.addAll(all, theShiz); // Add the result of recombination. Warning: May contain duplicates
+        Collections.addAll(all, p1); // Just in case...
+
+
+        // THIS IS EXPENSIVE SHIT
+//        List<Integer> dup =
+//                new ArrayList<>(new LinkedHashSet<>(all)); // Remove all duplicates
+//        Integer[] last = dup.toArray(new Integer[dup.size()]);
+
+        child.setCities(removeDups(all));
+//        child.setCities(last);
+
+        avgRecombinationTime += System.nanoTime() - start;
+        return child;
+    }
 
     // REPRODUCTION
 
@@ -455,6 +543,11 @@ public class TSP {
                 writeLog("Run Stats for experiment at: " + currentTime);
                 for (int y = 1; y <= runs; y++) {
 
+                    mutationCounter = 0;
+                    succMutations =0;
+                    q = 0;
+                    sigma = 0.2;
+
                     print(display,  "Run " + y + "\n");
 
                     // create the initial population of chromosomes
@@ -510,7 +603,7 @@ public class TSP {
                 print(display, "Solution found after " + generation + " generations." + "\n");
                 print(display, "MIN: " + min + " AVG: " + avg + " MAX: " + max + "\n");
 
-                print(display, "Shift MutationTime: " + avgMutationTime/mutationCounter + " transp mutationTime:  " + avgTMutationTime /tMutationCounter + " RecombinationTime: " + avgRecombinationTime/recombinationCounter+ " TournamentTime: " + avgTournamentTime/tournamentCounter + " childGenTime: " + avgEvolveTime/evolveCounter+ "\n");
+                print(display, "Shift MutationTime: " + avgMutationTime/ mutationTimerCounter + " transp mutationTime:  " + avgTMutationTime /tMutationCounter + " RecombinationTime: " + avgRecombinationTime/recombinationCounter+ " TournamentTime: " + avgTournamentTime/tournamentCounter + " childGenTime: " + avgEvolveTime/evolveCounter+ "\n");
             } catch (NumberFormatException e) {
                 System.out.println("Please ensure you enter integers for cities and population size");
                 System.out.println(formatMessage);
