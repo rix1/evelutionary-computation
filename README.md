@@ -25,8 +25,7 @@ In order to figure out if the data sets were significantly different, we run a T
 
 Based on these results, it was decided that our data sets had a significant difference. This can be backed up by the graph below, displaying Siri's (HLTSIR001) results to the right and mine (EDXRIK001) to the left.
 
-![Screen Shot 2015 06 01 At 22.55.43](../../Desktop/Screen%20Shot%202015-06-01%20at%2022.55.43.png)
-
+![Screen Shot 2015 05 28 At 11.27.38](Screen%20Shot%202015-05-28%20at%2011.27.38.png)
 
 ##IMPLEMENTATION COMPARISON
 
