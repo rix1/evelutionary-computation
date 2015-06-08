@@ -83,7 +83,7 @@ public class TSP {
     private static TextArea statsText;
 
     private static final int TOURNAMENT_SIZE =  5;
-    private static final int NUM_OF_CHILDREN = 3000;
+    private static final int NUM_OF_CHILDREN = 10000;
     private static Random r = new Random();
     private static ArrayList<Chromosome> candidates = new ArrayList<Chromosome>();
 
@@ -98,13 +98,13 @@ public class TSP {
         double succProsentage = (double)succMutations/mutationCounter;
 
         if(succProsentage > 0.2){
-            System.out.println("Increase probability from: "+ sigma);
+//            System.out.println("Increase probability from: "+ sigma);
             sigma = sigma/SIGMA_CONST;
-            System.out.println("TO: "+ sigma);
+//            System.out.println("TO: "+ sigma);
         }else if(succProsentage < 0.2){
-            System.out.println("Decrease probability from: "+ sigma);
+//            System.out.println("Decrease probability from: "+ sigma);
             sigma = sigma*SIGMA_CONST;
-            System.out.println("TO: "+ sigma);
+//            System.out.println("TO: "+ sigma);
         }else{
             // Do nothing.
         }
@@ -319,160 +319,50 @@ public class TSP {
         recombinationCounter++;
 
         Chromosome child = new Chromosome(cities);
-        ArrayList<Integer> all = new ArrayList<>();
 
         int[] allInt = new int[cityCount*2];
-
         int[] rand = createRandom(3, cityCount);
-
-        Integer[] theShiz = new Integer[cityCount];
+        int[] clean = new int[cityCount];
+        boolean[] inList = new boolean[cityCount];
 
         int pivotTracker = 0;
-
-        for (int i = 0; i < cityCount; i++) {
-            allInt[i+cityCount] = parent1.getCity(i);
-
-            if(i <= rand[pivotTracker] || pivotTracker == rand.length-1){
-                if(pivotTracker % 2 == 0){
-                    // Select from parent 1
-                    theShiz[i] = parent1.cityList[i];
-                }else{
-                    theShiz[i] = parent2.cityList[i];
-                    // Select from parent 2
-                }
-            }else{
-                pivotTracker++;
-                if(pivotTracker % 2 == 0){
-                    // Select from parent 1
-                    theShiz[i] = parent1.cityList[i];
-                }else{
-                    theShiz[i] = parent2.cityList[i];
-                    // Select from parent 2
-                }
-            }
-        }
-
-        Integer[] p1 = arrayToInteger(parent1.cityList);
-
-        Collections.addAll(all, theShiz); // Add the result of recombination. Warning: May contain duplicates
-        Collections.addAll(all, p1); // Just in case...
-
-
-        // THIS IS EXPENSIVE SHIT
-//        List<Integer> dup =
-//                new ArrayList<>(new LinkedHashSet<>(all)); // Remove all duplicates
-//        Integer[] last = dup.toArray(new Integer[dup.size()]);
-
-        child.setCities(removeDups(all));
-//        child.setCities(last);
-
-        avgRecombinationTime += System.nanoTime() - start;
-        return child;
-    }
-
-    // REPRODUCTION
-
-    private static Chromosome reproduce(Chromosome parent1, Chromosome parent2) {
-
-
-        Chromosome child = new Chromosome(cities);
-
-        ArrayList<Integer> all = new ArrayList<>();
-
-        int pivot = r.nextInt(cityCount);
-
-        Integer[] p1_temp = new Integer[pivot];
-        Integer[] p2_temp = new Integer[cityCount - pivot];
-
-        for (int i = 0; i < p1_temp.length; i++) {
-            p1_temp[i] = parent1.cityList[i];
-        }
-
-        for (int i = 0; i < p2_temp.length; i++) {
-            p2_temp[i] = parent2.cityList[i + pivot];
-        }
-
-        Integer[] p1 = arrayToInteger(parent1.cityList);
-
-        Collections.addAll(all, p1_temp); // Add the first half from parent 1
-        Collections.addAll(all, p2_temp); // Add the second half from parent 2
-        Collections.addAll(all, p1); // Just in case...
-
-        long start = System.nanoTime();
-        recombinationCounter++;
-
-
-        // THIS IS EXPENSIVE SHIT
-//        List<Integer> dup =
-//                new ArrayList<>(new LinkedHashSet<>(all)); // Remove all duplicates
-//        Integer[] last = dup.toArray(new Integer[dup.size()]);
-
-        child.setCities(removeDups(all));
-//        child.setCities(last);
-
-        avgRecombinationTime += System.nanoTime() - start;
-        return child;
-    }
-
-    private static int[] removeDups(ArrayList<Integer> aList) {
-        int[] cities = new int[cityCount];
-        boolean[] inList = new boolean[cityCount];
         int index = 0;
 
-        for (Integer i : aList){
-            if(!inList[i]){
-                cities[index] = i;
-                index++;
-                inList[i] = true;
-            }
-        }
-        return cities;
-    }
+        for (int i = 0; i < allInt.length; i++) {
 
+            if(i<cityCount) {
+                allInt[i + cityCount] = parent1.getCity(i);
 
-    // REPRODUCTION
-    public static Chromosome reproductionSiri(Chromosome parent1, Chromosome parent2) {
-        long start1 = System.nanoTime();
-        recombinationCounter++;
-
-        Chromosome child = new Chromosome(cities);
-        child.clearCities();
-
-        int start = (int) (Math.random() * parent1.cityList.length);
-        int end = (int) (Math.random() * parent1.cityList.length);
-
-        for (int i = 0; i < child.cityList.length; i++) {
-            // If start is less than end
-            if (start < end && i > start && i < end) {
-                child.setCity(i, parent1.getCity(i));
-            } // If start is larger
-            else if (start > end) {
-                if (!(i < start && i > end)) {
-                    child.setCity(i, parent1.getCity(i));
-                }
-            }
-        }
-
-        for (int i = 0; i < parent1.cityList.length; i++) {
-            // If child does not have the city - add it
-            if (!child.containsCity(parent2.getCity(i))) {
-                // Loop to find a spare position in the child's tour
-                for (int j = 0; j < child.cityList.length; j++) {
-                    // Spare position found, add city
-                    if (child.getCity(j) == 0) {
-                        child.setCity(j, parent2.getCity(i));
-                        break;
+                if (i <= rand[pivotTracker] || pivotTracker >= rand.length - 1) {
+                    if (pivotTracker % 2 == 0) {
+                        // Select from parent 1
+                        allInt[i] = parent1.cityList[i];
+                    } else {
+                        allInt[i] = parent2.cityList[i];
+                        // Select from parent 2
+                    }
+                } else {
+                    pivotTracker++;
+                    if (pivotTracker % 2 == 0) {
+                        // Select from parent 1
+                        allInt[i] = parent1.cityList[i];
+                    } else {
+                        allInt[i] = parent2.cityList[i];
+                        // Select from parent 2
                     }
                 }
             }
+            if(!inList[allInt[i]]){
+                clean[index] = allInt[i];
+                index++;
+                inList[allInt[i]] = true;
+            }
         }
-        avgRecombinationTime += System.nanoTime() - start1;
+        child.setCities(clean);
 
+        avgRecombinationTime += System.nanoTime() - start;
         return child;
     }
-
-
-
 
 
 
